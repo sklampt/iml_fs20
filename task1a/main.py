@@ -23,7 +23,7 @@ train = np.loadtxt(
 y_train = train[:, 1]
 x_train = train[:, 2:]
 kf = KFold(n_splits=10)
-for l in (0.1,1,10,100,1000):
+for l in (0.01,0.1,1,10,100):
     sum = 0
     # train model
     #
