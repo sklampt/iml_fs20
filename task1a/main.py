@@ -39,4 +39,5 @@ for l in (0.01,0.1,1,10,100):
     # print the solution
     print(sum/kf.get_n_splits(x_train))
 
+
 #export result with | tee result.csv
