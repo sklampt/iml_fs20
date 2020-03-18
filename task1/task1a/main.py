@@ -30,7 +30,7 @@ for l in (0.01,0.1,1,10,100):
         model = Ridge(alpha=l).fit(x_train[train_index],y_train[train_index])
 
         # predict the model
-        y_pred=model.predict(x_train[test_index])
+        y_pred = model.predict(x_train[test_index])
 
         # sum the RMSE
         RMSE = mean_squared_error(y_train[test_index], y_pred)**0.5
