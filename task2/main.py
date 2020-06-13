@@ -4,118 +4,41 @@
 ################################################################################
 
 import numpy as np
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.svm import NuSVC
-from sklearn.model_selection import KFold
-from sklearn.metrics import accuracy_score
-import matplotlib.pyplot as plt
+import pandas as pd
+from sklearn.impute import SimpleImputer
+from sklearn.svm import SVC
 
-# Load training data - labels
-trainl = np.loadtxt(
-    'data/train_labels.csv',
-    delimiter=',',
-    skiprows=1,
-    dtype=np.double,
-)
-id_trainl = trainl[:, 0].astype(np.int)
-x_trainl = trainl[:, 1:]
-
-# Load training data - features
-train = np.loadtxt(
+train_features = pd.read_csv(
     'data/train_features.csv',
-    delimiter=',',
-    skiprows=1,
-    dtype=np.double,
+    # index_col=['pid', 'Time'],
 )
-id_train = train[:, 0].astype(np.int)
-x_train = train[:, 1:]
 
-# Load test data - features
-test = np.loadtxt(
+train_labels = pd.read_csv(
+    'data/train_labels.csv',
+    index_col=['pid'],
+)
+
+test_features = pd.read_csv(
     'data/test_features.csv',
-    delimiter=',',
-    skiprows=1,
-    dtype=np.double,
+    index_col=['pid', 'Time'],
 )
-id_test = test[:, 0].astype(np.int)
-x_test = test[:, 1:]
 
-# Debug part...
-# train the model with KNeighborsClassifier
-DEBUG = True
+train_features['better_time'] = list(range(12)) * 18995
+train_features.set_index(['pid', 'better_time'], inplace=True)
 
-# DEBUG = False
-if (DEBUG):
-    kf = KFold(n_splits=5)
+X = train_features[['BaseExcess']].stack(dropna=False).unstack(level=1)
+y = train_labels[['LABEL_BaseExcess']]
 
-    results = []
-    parameters = np.arange(0.01,1,0.01)
-    i = 0
-    best_index = 0
-    best_score = 0
+# X = X.transpose()
+imp = SimpleImputer(strategy='mean', copy=False)
+imp.fit_transform(X)
+# X = X.transpose()
 
-    for parameter in parameters:
-        acc_sum = 0
+# print(X, y)
+# exit(1)
 
-        for train, test in kf.split(x_train):
-            classifier_model = NuSVC(
-                nu=parameter,
-                degree=3,
-                gamma='scale',
-                tol=0.001,
-                coef0=0.0,
-                decision_function_shape='ovr',
-                kernel='rbf'
-            ).fit(x_train[train],y_train[train])
+clf = SVC(kernel='sigmoid', class_weight='balanced')
 
-            y_pred = classifier_model.predict(x_train[test])
-            acc_iterating = accuracy_score(y_train[test], y_pred)
-            acc_sum += acc_iterating
+clf.fit(X, y)
 
-        results.append(acc_sum / 5)
-
-        if(best_score < acc_sum / 5):
-            best_score = acc_sum / 5
-            best_index = i
-
-        print(
-            '[' + '{:5.1f}'.format(i / len(parameters) * 100) + '%]',
-            end="\r"
-        )
-        i += 1
-
-    fig = plt.figure()
-    plt.title('NuSVC: Kernel "rbf"')
-    ax = fig.add_subplot(111)
-    ax.plot(parameters, results)
-    ax.axvline(x=parameters[best_index], color="r", label=parameters[best_index])
-    ax.legend()
-    plt.savefig('result.png')
-
-    print(best_score, parameters[best_index])
-
-# Train the model
-classifier_model = NuSVC(
-    nu=0.309,
-    degree=3,
-    gamma='scale',
-    tol=0.001,
-    coef0=0.0,
-    decision_function_shape='ovr',
-    kernel='rbf'
-).fit(x_train,y_train)
-
-# Predict test data with the trained model
-y_pred = classifier_model.predict(x_test)
-
-# Save the prediction in the result file
-result = np.array([id_test, y_pred]).transpose()
-
-np.savetxt(
-    'result.csv',
-    result,
-    header="Id,y",
-    comments='',
-    delimiter=",",
-    fmt="%i,%s",
-)
+# print(clf.predict(test_features))
