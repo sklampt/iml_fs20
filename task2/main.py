@@ -29,16 +29,17 @@ train_features.set_index(['pid', 'better_time'], inplace=True)
 X = train_features[['BaseExcess']].stack(dropna=False).unstack(level=1)
 y = train_labels[['LABEL_BaseExcess']]
 
+print(X)
 # X = X.transpose()
 imp = SimpleImputer(strategy='mean', copy=False)
 imp.fit_transform(X)
 # X = X.transpose()
-
+print(X)
 # print(X, y)
-# exit(1)
+exit(1)
 
 clf = SVC(kernel='sigmoid', class_weight='balanced')
 
 clf.fit(X, y)
 
-# print(clf.predict(test_features))
+print(clf.predict(test_features))
