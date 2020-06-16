@@ -48,6 +48,6 @@ pipeline = make_pipeline(
 )
 
 # Finally train the model and predict the test set
-# I got 0.99% seems very good...
+# I got 0.99 seems very good...
 pipeline.fit(X_train,y_train)
 print(pipeline.score(X_test, y_test))
