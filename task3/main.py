@@ -17,6 +17,10 @@ test = pd.read_csv(
     'data/test.csv',
 )
 
+# print(train['Active'].shape)
+# print(train['Active'])
+# exit()
+
 X = train['Sequence'].apply(lambda x: pd.Series(list(x)))
 X_hat = test['Sequence'].apply(lambda x: pd.Series(list(x)))
 # print(X)
@@ -26,11 +30,12 @@ enc = OneHotEncoder()
 enc.fit(X)
 onehotlabels = enc.transform(X).toarray()
 train_hotlabels = enc.transform(X_hat).toarray()
-# print(onehotlabels.shape)
-# exit()
+print(onehotlabels)
+print(onehotlabels.shape)
+exit(1)
 
 
-clf = MLPClassifier(hidden_layer_sizes=2, random_state=1, max_iter=300).fit(onehotlabels, train['Active'])
+clf = MLPClassifier(random_state=1, max_iter=300).fit(onehotlabels, train['Active'])
 clf.fit(onehotlabels, train['Active'])
 y_pred = clf.predict(train_hotlabels)
 
