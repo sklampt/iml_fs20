@@ -14,7 +14,8 @@ from sklearn.svm import SVC
 train_triplets = pd.read_csv(
     'data/train_triplets.txt',
 )
-
+print(train_triplets[0,2])
+exit()
 # Same for test data
 test_triplets = pd.read_csv(
     'data/test_triplets.txt',
