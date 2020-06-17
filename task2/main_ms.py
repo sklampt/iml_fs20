@@ -17,11 +17,11 @@ better_time = list(range(12))
 
 # Loading the data from csv
 # Then overwrite the time and set the index
-train_features = pd.read_csv(
+train_data = pd.read_csv(
     'data/train_features.csv',
 )
-train_features['Time'] = better_time * (len(train_features.index) // 12)
-train_features.set_index(['pid', 'Time'], inplace=True)
+train_data['Time'] = better_time * (len(train_data.index) // 12)
+train_data.set_index(['pid', 'Time'], inplace=True)
 
 # Loading the labels from csv and set the index to pid
 train_labels = pd.read_csv(
@@ -30,31 +30,51 @@ train_labels = pd.read_csv(
 )
 
 # Same for the test data
-test_features = pd.read_csv(
+test_data = pd.read_csv(
     'data/test_features.csv',
 )
-test_features['Time'] = better_time * (len(test_features.index) // 12)
-test_features.set_index(['pid', 'Time'], inplace=True)
+test_data['Time'] = better_time * (len(test_data.index) // 12)
+test_data.set_index(['pid', 'Time'], inplace=True)
 
 
 # For subtask 1 we have to predict some labels, we assume that they are
 # only relying on their feature counterpart, ex. BaseExcess -> LABEL_BaseExcess
 subtask1 = [
-    'BaseExcess',
-    'Fibrinogen',
-    'AST',
-    'Alkalinephos',
-    'Bilirubin_total',
-    'Lactate',
-    'TroponinI',
-    'SaO2',
-    'Bilirubin_direct',
-    'EtCO2',
+    # 'BaseExcess',
+    # 'Fibrinogen',
+    # 'AST',
+    # 'Alkalinephos',
+    # 'Bilirubin_total',
+    # 'Lactate',
+    # 'TroponinI',
+    # 'SaO2',
+    # 'Bilirubin_direct',
+    # 'EtCO2',
+    'Sepsis',
 ]
 for feature in subtask1:
-    X = train_features[[feature]].stack(dropna=False).unstack(level=1)
-    X_hat = test_features[[feature]].stack(dropna=False).unstack(level=1)
+    train_data = train_data[['RRate', 'ABPm', 'SpO2', 'Heartrate']]
+
+    X_pre = train_data.mean(level='pid')
+    # X_pre = X_pre.merge(train_data.var(level='pid'), left_on='pid', right_on='pid')
+    # X_pre = X_pre.merge(train_data.sum(level='pid'), left_on='pid', right_on='pid')
     y = train_labels['LABEL_'+feature]
+
+    # print(X_pre)
+    # exit(1)
+
+    imp = SimpleImputer(strategy='median', copy=False)
+    imp.fit_transform(X_pre)
+    # for row in X_pre.iterrows():
+    #     print(row)
+    #     exit(1)
+
+    # X = X_pre.T.mean(level='pid')
+    # X = X.merge(X_pre.T.var(level='pid'), left_on='pid', right_on='pid')
+    # X = X.merge(X_pre.T.sum(level='pid'), left_on='pid', right_on='pid')
+
+    X = X_pre
+    # print(X)
 
     # Split the data into training and test set
     X_train, X_test, y_train, y_test = train_test_split(
@@ -71,14 +91,14 @@ for feature in subtask1:
     # # print(X, X_hat, y)
     # # exit(1)
 
-    # clf = SVC(kernel='sigmoid', class_weight='balanced')
-    # clf.fit(X_train, y_train)
+    clf = SVC(gamma='auto', kernel='sigmoid', class_weight='balanced')
+    clf.fit(X_train, y_train)
 
-    # y_hat = clf.predict(X_test)
+    y_hat = clf.predict(X_test)
 
     # Second Try: Tests will be only if there has one yet...
     # DOES NOT WORK
-    y_hat = pd.DataFrame(X_test.isnull().sum(axis=1) < 12).astype(int).to_numpy()
+    # y_hat = pd.DataFrame(X_test.isnull().sum(axis=1) < 12).astype(int).to_numpy()
 
     # TODO: Next Idea would be to use the vitals... could also be useful for sepsis
 
