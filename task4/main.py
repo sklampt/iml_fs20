@@ -4,43 +4,70 @@
 ################################################################################
 
 import numpy as np
-from sklearn.metrics import mean_squared_error
-from sklearn.linear_model import Ridge
+import pandas as pd
+from PIL import Image
 
-# Load training data
-# np.set_printoptions(precision=16)#set precision for proper data loading
-train = np.loadtxt(
-    'data/train.csv',
-    delimiter=',',
-    skiprows=1,
-    dtype=np.float, # change to longdouble doesn't effect anything
+from sklearn.svm import SVC
+
+
+# Loading train data from csv
+train_triplets = pd.read_csv(
+    'data/train_triplets.txt',
 )
 
-y_train = train[:, 1]
-x_train = train[:, 2:]
+# Same for test data
+test_triplets = pd.read_csv(
+    'data/test_triplets.txt',
+)
+ 
 
-x_train_sq = np.square(x_train)
-x_train_exp = np.exp(x_train)
-x_train_cos = np.cos(x_train)
-ones = np.ones([x_train.shape[0], 1])
+# For subtask 1 we have to predict some labels, we assume that they are
+# only relying on their feature counterpart, ex. BaseExcess -> LABEL_BaseExcess
+for line in train_triplets:
+    for i in range(3):
+        X[line, i] = Image.open('food/'+train_triplets[line, i]+'.jpg')
+print(X)
+exit()
 
-x_train_extended=np.block([x_train,x_train_sq,x_train_exp,x_train_cos,ones])
+for line in test_triplets:
+    for i in range(3):
+        X_hat[line, i] = Image.open('food/'+test_triplets[line, i]+'.jpg')
+
+    # Split the data into training and test set
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.4, random_state=0
+    )
+
+    # First Try: Impute and SVC with sigmoid function
+    # DOES NOT WORK (maybe its the imputer)
+    # TODO: Try with numpy...
+    # imp = SimpleImputer(strategy='constant', fill_value=0, copy=False)
+    # imp.fit_transform(X_train)
+    # imp.fit_transform(X_test)
+
+    # # print(X, X_hat, y)
+    # # exit(1)
+
+    # clf = SVC(kernel='sigmoid', class_weight='balanced')
+    # clf.fit(X_train, y_train)
+
+    # y_hat = clf.predict(X_test)
+
+    # Second Try: Tests will be only if there has one yet...
+    # DOES NOT WORK
+    y_hat = pd.DataFrame(X_test.isnull().sum(axis=1) < 12).astype(int).to_numpy()
+
+    # TODO: Next Idea would be to use the vitals... could also be useful for sepsis
+
+    # TODO: Save the predictions in the correct way...
+    print(roc_auc_score(y_test, y_hat))
 
 
-# Train the model
-model = Ridge(alpha=1000).fit(x_train_extended, y_train)
-weights_hat = model.coef_
-weights_hat[20] = model.intercept_
-
-for i in range(21):
-    print(weights_hat[i])
+# For subtask 2 we have to predict sepsis
+# Symptoms for sepsis include fever, trouble breathing, low blood pressure
+# and high heart rate. Therefore we use each of these as features, not
+# as time series but as mean, variance, min, max and gradient.
 
 
-# Calculate the Root Mean Squared Error with the known function
-# This only works, because we know the correct prediction function
-#
-# weights_sample =np.arange(1,22)
-# RMSE = mean_squared_error(weights_sample, weights_hat)**0.5
-# RMSE_hat = mean_squared_error(weights_sample, weights_hat)**0.5
-# print('---')
-# print(RMSE, RMSE_hat)
+# Subtask 3: Predict some vitals:
+# 
