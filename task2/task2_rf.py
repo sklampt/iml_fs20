@@ -22,76 +22,42 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import roc_auc_score
 from sklearn.feature_selection import RFECV
 
+# Because each patient has 12 consecutive hours recorded
+# but not the first 12 we have to fix this
+better_time = list(range(12))
 
+# Loading the data from csv
+# Then overwrite the time and set the index
+train_features = pd.read_csv('data/train_features.csv')
+train_features['Time'] = better_time * (len(train_features.index) // 12)
+train_features.set_index(['pid', 'Time'], inplace=True)
 
-train_features=pd.read_csv(r'data/train_features.csv')
-train_labels=pd.read_csv(r'data/train_labels.csv')
-test_features=pd.read_csv(r'data/test_features.csv')
+# Loading the labels from csv and set the index to pid
+train_labels = pd.read_csv(
+    'data/train_labels.csv',
+    index_col=['pid'],
+)
 
-ID=[str(i) for i in train_features['pid']]
-patient_data={}
-for jj in range(int(len(ID)/12)):
-    patient_data[ID[jj*12]]={}
-    for kk in train_features.columns:
-        patient_data[ID[jj*12]][kk]=list(train_features[kk][jj*12:jj*12+12])
+# Same for the test data
+test_features = pd.read_csv('data/test_features.csv')
+test_features['Time'] = better_time * (len(test_features.index) // 12)
+test_features.set_index(['pid', 'Time'], inplace=True)
 
-ID_test=[str(i) for i in test_features['pid']]
-patient_data_test={}
-for jj in range(int(len(ID_test)/12)):
-    patient_data_test[ID_test[jj*12]]={}
-    for kk in test_features.columns:
-        patient_data_test[ID_test[jj*12]][kk]=list(test_features[kk][jj*12:jj*12+12])
+# WARNING: Uncomment this part to save the patient data after one aggregation
+# as it takes a long time to compile the list
+# patient_data = train_features.groupby(level=0).agg(list)
+# patient_data_test = test_features.groupby(level=0).agg(list)
+# patient_data.to_pickle("./patient_data.pkl")
+# patient_data_test.to_pickle("./patient_data_test.pkl")
+patient_data = pd.read_pickle("./patient_data.pkl")
+patient_data_test = pd.read_pickle("./patient_data_test.pkl")
+print(patient_data, patient_data_test)
 
-feature_list = list(patient_data[ID[0]].keys())[3:]
+feature_list = patient_data.columns.tolist()[3:]
 print(feature_list)
 
-
-#correct for shifts in time (e.g. hours 3-14 instead of 1-12 ), inserting nan for hours 1 and 2, shifting the rest of the data
-for ii in patient_data.keys():
-    time=patient_data[ii]['Time']
-    if max(time)>12:
-        diff=max(time)-12
-        patient_data[ii]['Time']=list(range(1,13,1))
-        for jj in feature_list:
-            old=patient_data[ii][jj]
-            
-            new=[]
-            for kk in range(12):
-                if kk<diff:
-                    new.append(np.nan)
-                else:
-                    new.append(old[kk-diff])
-            patient_data[ii][jj]=new
-
-
-###############test-data###############
-#correct for shifts in time (e.g. hours 3-14 instead of 1-12 ), inserting nan for hours 1 and 2, shifting the rest of the data
-for ii in patient_data_test.keys():
-    time=patient_data_test[ii]['Time']
-    if max(time)>12:
-        diff=max(time)-12
-        patient_data_test[ii]['Time']=list(range(1,13,1))
-        for jj in feature_list:
-            old=patient_data_test[ii][jj]
-            
-            new=[]
-            for kk in range(12):
-                if kk<diff:
-                    new.append(np.nan)
-                else:
-                    new.append(old[kk-diff])
-            patient_data_test[ii][jj]=new
-
-
 #calculate averages to insert for nan's where there is no data
-averages={}
-for ii in train_features.columns:
-    dummy=[]
-    for jj in train_features[ii]:
-        if not np.isnan(jj):
-            dummy.append(jj)
-    averages[ii]=np.mean(dummy)
-print(averages)
+averages = train_features.mean(axis=0)
 
 
 #replace nan's in the data: 
@@ -100,26 +66,25 @@ print(averages)
 # one not-nan value: replace all nan's with this value
 # more than one not-nan value: linear regression on those values and replace nan's with the results of the fit.
 np.seterr('raise')
-for ii in patient_data.keys():
+for index, row in patient_data.iterrows():
     for jj in feature_list:
         number_not=[]
         number_nan=[]
-        for kk in range(len(patient_data[ii][jj])):
-            if not np.isnan(patient_data[ii][jj][kk]):
+        for kk in range(len(row[jj])):
+            if not np.isnan(row[jj][kk]):
                 number_not.append(kk)
             else:
                 number_nan.append(kk)
         if number_not==[]:
-            patient_data[ii][jj]=[averages[jj] for i in range(12)]
+            row[jj]=[averages[jj] for i in range(12)]
         elif len(number_not)==1:
-            patient_data[ii][jj]=[patient_data[ii][jj][number_not[0]]for i in range(12)]
+            row[jj]=[row[jj][number_not[0]]for i in range(12)]
         else:
-            x=[patient_data[ii]['Time'][i] for i in number_not]
-            y=[patient_data[ii][jj][i] for i in number_not]
+            x=[list(range(12))[i] for i in number_not]
+            y=[row[jj][i] for i in number_not]
             slope, intercept, a,b,c =stats.linregress(x,y)
             for hh in number_nan:
-                patient_data[ii][jj][hh]=intercept+slope*patient_data[ii]['Time'][hh]
-
+                row[jj][hh]=intercept+slope*list(range(12))[hh]
 
 
 ###################test_data######################
@@ -129,39 +94,38 @@ for ii in patient_data.keys():
 # one not-nan value: replace all nan's with this value
 # more than one not-nan value: linear regression on those values and replace nan's with the results of the fit.
 np.seterr('raise')
-for ii in patient_data_test.keys():
+for index, row in patient_data_test.iterrows():
     for jj in feature_list:
         number_not=[]
         number_nan=[]
-        for kk in range(len(patient_data_test[ii][jj])):
-            if not np.isnan(patient_data_test[ii][jj][kk]):
+        for kk in range(len(row[jj])):
+            if not np.isnan(row[jj][kk]):
                 number_not.append(kk)
             else:
                 number_nan.append(kk)
         if number_not==[]:
-            patient_data_test[ii][jj]=[averages[jj] for i in range(12)]
+            row[jj]=[averages[jj] for i in range(12)]
         elif len(number_not)==1:
-            patient_data_test[ii][jj]=[patient_data_test[ii][jj][number_not[0]]for i in range(12)]
+            row[jj]=[row[jj][number_not[0]]for i in range(12)]
         else:
-            x=[patient_data_test[ii]['Time'][i] for i in number_not]
-            y=[patient_data_test[ii][jj][i] for i in number_not]
+            x=[list(range(12))[i] for i in number_not]
+            y=[row[jj][i] for i in number_not]
             slope, intercept, a,b,c =stats.linregress(x,y)
             for hh in number_nan:
-                patient_data_test[ii][jj][hh]=intercept+slope*patient_data_test[ii]['Time'][hh]
-
+                row[jj][hh]=intercept+slope*list(range(12))[hh]
 
 
 #create descriptor array - average and slope
 X=[]
-for ii in patient_data.keys():
+for index, row in patient_data.iterrows():
     dummy=[]
-    dummy.append(patient_data[ii]['Age'][0])
+    dummy.append(row['Age'][0])
     for jj in feature_list:
-        dummy.append(np.mean(patient_data[ii][jj]))
-        dummy.append(np.min(patient_data[ii][jj]))
-        dummy.append(np.max(patient_data[ii][jj]))
-        dummy.append(patient_data[ii][jj][-1]-patient_data[ii][jj][0])
-        dummy.append(np.std(patient_data[ii][jj]))
+        dummy.append(np.mean(row[jj]))
+        dummy.append(np.min(row[jj]))
+        dummy.append(np.max(row[jj]))
+        dummy.append(row[jj][-1]-row[jj][0])
+        dummy.append(np.std(row[jj]))
     X.append(dummy)
 X=np.asarray(X)
 print(X.shape)
@@ -172,19 +136,19 @@ np.isnan(X).any()
 #################test-data###############
 #create descriptor array - average and slope
 X_test=[]
-for ii in patient_data_test.keys():
+for index, row in patient_data_test.iterrows():
     dummy=[]
-    dummy.append(patient_data_test[ii]['Age'][0])
+    dummy.append(row['Age'][0])
     for jj in feature_list:
-        dummy.append(np.mean(patient_data_test[ii][jj]))
-        dummy.append(np.min(patient_data_test[ii][jj]))
-        dummy.append(np.max(patient_data_test[ii][jj]))
-        dummy.append(patient_data_test[ii][jj][-1]-patient_data_test[ii][jj][0])
-        dummy.append(np.std(patient_data_test[ii][jj]))
-    X_test.append(dummy)
-X_test=np.asarray(X_test)
-print(X_test.shape)
-np.isnan(X_test).any()
+        dummy.append(np.mean(row[jj]))
+        dummy.append(np.min(row[jj]))
+        dummy.append(np.max(row[jj]))
+        dummy.append(row[jj][-1]-row[jj][0])
+        dummy.append(np.std(row[jj]))
+    X.append(dummy)
+X=np.asarray(X)
+print(X.shape)
+np.isnan(X).any()
 
 
 
