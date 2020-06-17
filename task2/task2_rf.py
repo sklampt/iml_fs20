@@ -1,9 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[1]:
-
-
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -11,34 +5,28 @@ from scipy import stats
 import scipy as sp
 from sklearn.model_selection import StratifiedKFold
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import plot_roc_curve
+# from sklearn.metrics import plot_roc_curve
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, RandomForestRegressor
-from sklearn.metrics import plot_confusion_matrix, accuracy_score, balanced_accuracy_score
+from sklearn.metrics import accuracy_score, balanced_accuracy_score
 from sklearn.model_selection import StratifiedKFold
 from sklearn.model_selection import GridSearchCV
-from imblearn.under_sampling import RandomUnderSampler
-from imblearn.over_sampling import SMOTE
-from imblearn.pipeline import Pipeline
+# from imblearn.under_sampling import RandomUnderSampler
+# from imblearn.over_sampling import SMOTE
+# from imblearn.pipeline import Pipeline
 from imblearn.ensemble import BalancedRandomForestClassifier
-from imblearn.under_sampling import RandomUnderSampler
+# from imblearn.under_sampling import RandomUnderSampler
 from sklearn.model_selection import StratifiedShuffleSplit
-from sklearn.metrics import confusion_matrix,ConfusionMatrixDisplay
+# from sklearn.metrics import confusion_matrix,ConfusionMatrixDisplay
 from sklearn.svm import SVC,SVR
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import roc_auc_score
 from sklearn.feature_selection import RFECV
 
 
-# In[2]:
 
-
-train_features=pd.read_csv(r'train_features.csv')
-train_labels=pd.read_csv(r'train_labels.csv')
-test_features=pd.read_csv(r'test_features.csv')
-
-
-# In[3]:
-
+train_features=pd.read_csv(r'data/train_features.csv')
+train_labels=pd.read_csv(r'data/train_labels.csv')
+test_features=pd.read_csv(r'data/test_features.csv')
 
 ID=[str(i) for i in train_features['pid']]
 patient_data={}
@@ -47,10 +35,6 @@ for jj in range(int(len(ID)/12)):
     for kk in train_features.columns:
         patient_data[ID[jj*12]][kk]=list(train_features[kk][jj*12:jj*12+12])
 
-
-# In[6]:
-
-
 ID_test=[str(i) for i in test_features['pid']]
 patient_data_test={}
 for jj in range(int(len(ID_test)/12)):
@@ -58,16 +42,8 @@ for jj in range(int(len(ID_test)/12)):
     for kk in test_features.columns:
         patient_data_test[ID_test[jj*12]][kk]=list(test_features[kk][jj*12:jj*12+12])
 
-
-# In[7]:
-
-
-feature_list=list(patient_data[ID[0]].keys())
-feature_list=feature_list[3:]
+feature_list = list(patient_data[ID[0]].keys())[3:]
 print(feature_list)
-
-
-# In[8]:
 
 
 #correct for shifts in time (e.g. hours 3-14 instead of 1-12 ), inserting nan for hours 1 and 2, shifting the rest of the data
@@ -86,9 +62,6 @@ for ii in patient_data.keys():
                 else:
                     new.append(old[kk-diff])
             patient_data[ii][jj]=new
-
-
-# In[9]:
 
 
 ###############test-data###############
@@ -110,9 +83,6 @@ for ii in patient_data_test.keys():
             patient_data_test[ii][jj]=new
 
 
-# In[10]:
-
-
 #calculate averages to insert for nan's where there is no data
 averages={}
 for ii in train_features.columns:
@@ -122,9 +92,6 @@ for ii in train_features.columns:
             dummy.append(jj)
     averages[ii]=np.mean(dummy)
 print(averages)
-
-
-# In[11]:
 
 
 #replace nan's in the data: 
@@ -153,8 +120,6 @@ for ii in patient_data.keys():
             for hh in number_nan:
                 patient_data[ii][jj][hh]=intercept+slope*patient_data[ii]['Time'][hh]
 
-
-# In[12]:
 
 
 ###################test_data######################
@@ -185,8 +150,6 @@ for ii in patient_data_test.keys():
                 patient_data_test[ii][jj][hh]=intercept+slope*patient_data_test[ii]['Time'][hh]
 
 
-# In[13]:
-
 
 #create descriptor array - average and slope
 X=[]
@@ -204,8 +167,6 @@ X=np.asarray(X)
 print(X.shape)
 np.isnan(X).any()
 
-
-# In[14]:
 
 
 #################test-data###############
@@ -225,8 +186,6 @@ X_test=np.asarray(X_test)
 print(X_test.shape)
 np.isnan(X_test).any()
 
-
-# In[15]:
 
 
 y_sepsis=train_labels['LABEL_Sepsis']
@@ -248,13 +207,9 @@ for ii in range(len(features_sepsis)):
 X_sepsis=np.delete(X,deletelist,1)
 
 
-# In[16]:
-
 
 brfc_sepsis=BalancedRandomForestClassifier(random_state=0,n_estimators = 400, max_depth = 100, max_features = 'sqrt',sampling_strategy=1,bootstrap=False).fit(X_sepsis,y_sepsis)
 
-
-# In[17]:
 
 
 for ii in range(len(features_sepsis)):
@@ -264,14 +219,10 @@ X_test_sepsis=np.delete(X_test,deletelist,1)
 y_pred_sepsis=brfc_sepsis.predict_proba(X_test_sepsis)[:,1]
 
 
-# In[18]:
-
 
 y_pred_all=[]
 y_pred_all.append(list(patient_data_test.keys()))
 
-
-# In[20]:
 
 
 roc_score=[]
@@ -282,13 +233,9 @@ for ii in range(1,11):
     y_pred_all.append(y_pred)
 
 
-# In[21]:
-
 
 y_pred_all.append(y_pred_sepsis)
 
-
-# In[22]:
 
 
 feature=[[ 1, 32, 27, 32, 31, 38, 21, 14, 21, 38, 40, 13,  8, 15, 35, 40, 23,
@@ -337,8 +284,6 @@ feature=[[ 1, 32, 27, 32, 31, 38, 21, 14, 21, 38, 40, 13,  8, 15, 35, 40, 23,
         17]]
 
 
-# In[23]:
-
 
 for ii in range(12,16):
     dum=0
@@ -356,41 +301,13 @@ for ii in range(12,16):
     y_pred_all.append(y_pred)
 
 
-# In[24]:
-
 
 result=np.asarray(y_pred_all)
 result=np.transpose(result)
 print(result.shape)
 
 
-# In[25]:
 
 
 df_result=pd.DataFrame(result,None,train_labels.columns)
-
-
-# In[26]:
-
-
-import os
-os.getcwd()
-
-
-# In[27]:
-
-
-df_result.to_csv('prediction_2.zip', index=False, float_format='%.3f', compression='zip')
-
-
-# In[ ]:
-
-
-df_result.to_excel(r'result_1.xlsx',index=False)
-
-
-# In[ ]:
-
-
-
-
+df_result.to_csv('results.zip', index=False, float_format='%.3f', compression='zip')
