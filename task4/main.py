@@ -6,6 +6,7 @@
 import numpy as np
 import pandas as pd
 from PIL import Image
+import matplotlib.pyplot as plt
 # import tensorflow as tf
 # from tensorflow import keras
 
@@ -21,18 +22,16 @@ test_triplets = pd.read_csv(
     header=None,
 )
 
+# crop all img to same size, manuell mit PIL, 200x200 np.array, train_on_batch
+# generator 
+
 # Initialize train and test matrix 
-# X = np.array([],[], np.str)
 X = [[0 for x in range(3)] for y in range(59515)]
 X_hat = [[0 for x in range(3)] for y in range(59544)]
-# X[3][2] = 3
 
 # Create train set with jpg files
-# Only first row =1
 rcounter = 0
 for index, line in train_triplets.iterrows():
-    # print(line[0])
-    # exit()
     counter = 0
     for i in line[0].split(' '):
         # print(i)
@@ -42,12 +41,15 @@ for index, line in train_triplets.iterrows():
 print(X)
 exit()
 
-for line in test_triplets:
+# Same for test set
+rcounter = 0
+for index, line in test_tripletsiterrows():
     counter = 0
-    for i in line.split(' '):
+    for i in line[0].split(' '):
         #print(i)
-        X[line][col] = Image.open('data/food/'+i+'.jpg')
+        X[rcounter][counter] = np.array(Image.open('data/food/'+i+'.jpg').getdata())
         counter += 1
+    rcounter += 1
             
 # Split the data into training and test set
 X_train, X_test, y_train, y_test = train_test_split(
