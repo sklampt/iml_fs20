@@ -54,7 +54,7 @@ y_hat = pipeline.predict(X_hat)
 
 # Output results into file
 pd.DataFrame(y_hat).to_csv(
-    "results.csv",
+    "results1.csv",
     index=False,
     header=False,
 )
