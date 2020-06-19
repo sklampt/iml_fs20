@@ -3,55 +3,65 @@
 ###########################MACHINE LEARNING TASK4###############################
 ################################################################################
 
-import numpy as np
-import pandas as pd
-from PIL import Image
+# USAGE
+# python compare.py --dataset images
+
+# import the necessary packages
+from scipy.spatial import distance as dist
 import matplotlib.pyplot as plt
-# import tensorflow as tf
-# from tensorflow import keras
+import pandas as pd
+import numpy as np
+import argparse
+import glob
+import cv2
 
-# Loading train data from csv
-train_triplets = pd.read_csv(
-    'data/train_triplets.txt',
-    header=None,
-)
+# construct the argument parser and parse the arguments
+ap = argparse.ArgumentParser()
+args = vars(ap.parse_args())
 
-# Same for test data
-test_triplets = pd.read_csv(
+# initialize the index dictionary to store the image name
+# and corresponding histograms and the images dictionary
+# to store the images themselves
+index = {}
+images = {}
+counter = 0
+
+data = pd.read_csv(
     'data/test_triplets.txt',
+    dtype=str,
+    sep=" ",
     header=None,
+    names=['A','B','C'],
+    # nrows=1000,
 )
 
-# crop all img to same size, manuell mit PIL, 200x200 np.array, train_on_batch
-# generator 
+# loop over the image paths
+for index, row in data.iterrows():
+    # extract the image filename (assumed to be unique) and
+    # load the image, updating the images dictionary
+    compare = {}
+    for label, value in row.items():
+        filename = "data/food/" + value + ".jpg"
+        # print(filename)
+        image = cv2.imread(filename, 1)
+        images[filename] = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-# Initialize train and test matrix 
-X = [[0 for x in range(3)] for y in range(59515)]
-X_hat = [[0 for x in range(3)] for y in range(59544)]
+        # extract a 3D RGB color histogram from the image,
+        # using 8 bins per channel, normalize, and update
+        # the index
+        hist = cv2.calcHist([image], [0, 1, 2], None, [8, 8, 8], [0, 256, 0, 256, 0, 256])
+        hist = cv2.normalize(hist, hist).flatten()
+        compare[label] = hist
+    
+    dB = cv2.compareHist(compare['A'], compare['B'], cv2.HISTCMP_BHATTACHARYYA)
+    dC = cv2.compareHist(compare['A'], compare['C'], cv2.HISTCMP_BHATTACHARYYA)
 
-# Create train set with jpg files
-rcounter = 0
-for index, line in train_triplets.iterrows():
-    counter = 0
-    for i in line[0].split(' '):
-        # print(i)
-        X[rcounter][counter] = np.array(Image.open('data/food/'+i+'.jpg').getdata())
+    # print(dB, dC)
+
+    if (dB < dC):
+        print(1)
         counter += 1
-    rcounter += 1
-print(X)
-exit()
+    else:
+        print(0)
 
-# Same for test set
-rcounter = 0
-for index, line in test_tripletsiterrows():
-    counter = 0
-    for i in line[0].split(' '):
-        #print(i)
-        X[rcounter][counter] = np.array(Image.open('data/food/'+i+'.jpg').getdata())
-        counter += 1
-    rcounter += 1
-            
-# Split the data into training and test set
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.4, random_state=0
-)
+# print(counter / 100)

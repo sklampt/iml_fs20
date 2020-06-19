@@ -126,4 +126,5 @@ history = model.fit_generator(
     validation_data=testgenerator,
     shuffle=False,
     verbose=1,
+    validation_steps=1,
 )
