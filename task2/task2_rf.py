@@ -76,20 +76,19 @@ X_test = create_features(patient_data_test)
 y_pred_all = []
 y_pred_all.append(list(patient_data_test.keys()))
 
-for ii in range(1,11):
-    y = train_labels[train_labels.columns[ii]]
+for label in train_labels.columns[1:11]:
     brfc = BalancedRandomForestClassifier(
         random_state=0,
-        n_estimators=300,
-        max_depth=100,
+        n_estimators=250,
+        max_depth=90,
         max_features='sqrt',
         sampling_strategy=1,
         bootstrap=False
-    ).fit(X, y)
+    ).fit(X, train_labels[label])
     y_pred=brfc.predict(X_test)
     y_pred_all.append(y_pred)
 
-brfc_sepsis = BalancedRandomForestClassifier(
+brfc = BalancedRandomForestClassifier(
     random_state=0,
     n_estimators=400,
     max_depth=100,
@@ -98,8 +97,8 @@ brfc_sepsis = BalancedRandomForestClassifier(
     bootstrap=False
 ).fit(X, train_labels['LABEL_Sepsis'])
 
-y_pred_sepsis = brfc_sepsis.predict(X_test)
-y_pred_all.append(y_pred_sepsis)
+y_pred = brfc.predict(X_test)
+y_pred_all.append(y_pred)
 
 
 for ii in range(12,16):
