@@ -9,27 +9,43 @@ import numpy as np
 import argparse
 import glob
 import cv2
+import progressbar
+
+NUM_ROWS=1000
+# NUM_ROWS=59543
 
 # construct the argument parser and parse the arguments
 ap = argparse.ArgumentParser()
 args = vars(ap.parse_args())
+bar = progressbar.ProgressBar(max_value=NUM_ROWS)
 
-# initialize the index dictionary to store the image name
-# and corresponding histograms and the images dictionary
-# to store the images themselves
-index = {}
-images = {}
-counter = 0
 
 data = pd.read_csv(
-    'data/test_triplets.txt',
+    'data/train_triplets.txt',
     dtype=str,
     sep=" ",
     header=None,
     names=['A','B','C'],
-    # nrows=1000,
+    nrows=NUM_ROWS,
 )
 
+methods = [
+    cv2.HISTCMP_CORREL,
+    cv2.HISTCMP_CHISQR,
+    cv2.HISTCMP_INTERSECT,
+    cv2.HISTCMP_BHATTACHARYYA,
+    cv2.HISTCMP_CHISQR_ALT,
+    cv2.HISTCMP_KL_DIV
+]
+
+correct_count = [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+]
 # loop over the image paths
 for index, row in data.iterrows():
     # extract the image filename (assumed to be unique) and
@@ -39,7 +55,6 @@ for index, row in data.iterrows():
         filename = "data/food/" + value + ".jpg"
         # print(filename)
         image = cv2.imread(filename, 1)
-        images[filename] = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
         # extract a 3D RGB color histogram from the image,
         # using 8 bins per channel, normalize, and update
@@ -47,16 +62,23 @@ for index, row in data.iterrows():
         hist = cv2.calcHist([image], [0, 1, 2], None, [8, 8, 8], [0, 256, 0, 256, 0, 256])
         hist = cv2.normalize(hist, hist).flatten()
         compare[label] = hist
+
+    for method in methods:
+        dB = cv2.compareHist(compare['A'], compare['B'], method)
+        dC = cv2.compareHist(compare['A'], compare['C'], method)
+
+        # print(dB, dC)
+
+        if (dB < dC):
+            # print(1)
+            correct_count[method] += 1
+        else:
+            # print(0)
+            pass
     
-    dB = cv2.compareHist(compare['A'], compare['B'], cv2.HISTCMP_BHATTACHARYYA)
-    dC = cv2.compareHist(compare['A'], compare['C'], cv2.HISTCMP_BHATTACHARYYA)
+    bar.update(index)
 
-    # print(dB, dC)
-
-    if (dB < dC):
-        print(1)
-        counter += 1
-    else:
-        print(0)
-
-# print(counter / 100)
+print()
+print("Results:")
+for method in methods:
+    print(method, "accuray:", correct_count[method] / NUM_ROWS)
